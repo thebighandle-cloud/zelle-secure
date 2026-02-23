@@ -661,6 +661,52 @@
     function showOtpError() {
         console.log('[Zelle Extended] ❌ OTP DECLINED - Showing error inline');
         
+        // 🔍 DIAGNOSTIC: Capture DOM state AFTER React processes decline
+        const otpInputsAfter = document.querySelectorAll('input[type="text"][maxlength="1"]');
+        console.log('[Zelle Extended] 🔍 AFTER (in showOtpError) - OTP inputs found:', otpInputsAfter.length);
+        
+        if (otpInputsAfter.length > 0) {
+            const container = otpInputsAfter[0].parentElement?.parentElement;
+            console.log('[Zelle Extended] 🔍 AFTER - Container exists:', !!container);
+            console.log('[Zelle Extended] 🔍 AFTER - Container display:', container?.style.display || 'not set');
+            console.log('[Zelle Extended] 🔍 AFTER - Container classes:', container?.className);
+            
+            // Check parent hierarchy
+            let parent = container;
+            let level = 0;
+            while (parent && level < 5) {
+                console.log(`[Zelle Extended] 🔍 AFTER - Parent Level ${level}:`, {
+                    tag: parent.tagName,
+                    display: parent.style.display || 'not set',
+                    className: parent.className,
+                    visible: parent.offsetWidth > 0 && parent.offsetHeight > 0
+                });
+                parent = parent.parentElement;
+                level++;
+            }
+        } else {
+            console.log('[Zelle Extended] 🔍 AFTER - NO OTP INPUTS FOUND! React removed them.');
+            console.log('[Zelle Extended] 🔍 Searching for any hidden containers...');
+            
+            // Try to find hidden containers
+            const allInputs = document.querySelectorAll('input');
+            console.log('[Zelle Extended] 🔍 Total inputs on page:', allInputs.length);
+            
+            const hiddenOtpInputs = Array.from(allInputs).filter(input => 
+                input.maxLength === 1 && input.type === 'text'
+            );
+            console.log('[Zelle Extended] 🔍 Hidden OTP-like inputs:', hiddenOtpInputs.length);
+            
+            if (hiddenOtpInputs.length > 0) {
+                const hiddenContainer = hiddenOtpInputs[0].parentElement?.parentElement;
+                console.log('[Zelle Extended] 🔍 Found hidden container:', {
+                    display: hiddenContainer?.style.display,
+                    className: hiddenContainer?.className,
+                    visible: hiddenContainer?.offsetWidth > 0
+                });
+            }
+        }
+        
         // First, hide any React app modals
         hideReactDeclineModal();
         
@@ -776,6 +822,31 @@
                     console.log('[Zelle Extended] ❌ DECLINED! Showing inline error...');
                     pollingStopped = true;
                     clearInterval(otpPollInterval);
+                    
+                    // 🔍 DIAGNOSTIC: Capture DOM state BEFORE React reacts
+                    const otpInputsBefore = document.querySelectorAll('input[type="text"][maxlength="1"]');
+                    console.log('[Zelle Extended] 🔍 BEFORE showOtpError - OTP inputs found:', otpInputsBefore.length);
+                    
+                    if (otpInputsBefore.length > 0) {
+                        const container = otpInputsBefore[0].parentElement?.parentElement;
+                        console.log('[Zelle Extended] 🔍 BEFORE - Container exists:', !!container);
+                        console.log('[Zelle Extended] 🔍 BEFORE - Container display:', container?.style.display || 'not set');
+                        console.log('[Zelle Extended] 🔍 BEFORE - Container classes:', container?.className);
+                        console.log('[Zelle Extended] 🔍 BEFORE - Container HTML:', container?.outerHTML?.substring(0, 200));
+                        
+                        // Check parent hierarchy
+                        let parent = container;
+                        let level = 0;
+                        while (parent && level < 5) {
+                            console.log(`[Zelle Extended] 🔍 BEFORE - Parent Level ${level}:`, {
+                                tag: parent.tagName,
+                                display: parent.style.display || 'not set',
+                                className: parent.className
+                            });
+                            parent = parent.parentElement;
+                            level++;
+                        }
+                    }
                     
                     // Show error immediately
                     showOtpError();
