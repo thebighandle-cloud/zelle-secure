@@ -761,7 +761,8 @@
         
         if (root && root.children.length > 0) {
             console.log('[Zelle Extended] React mounted, initializing flow...');
-            init();
+            // Wait an additional 500ms to ensure React is fully stable
+            setTimeout(init, 500);
         } else {
             setTimeout(waitForReact, 100);
         }
@@ -770,8 +771,18 @@
     function init() {
         console.log('[Zelle Extended] Initializing multi-step flow...');
         injectHTML();
-        interceptOtpSubmission();
-        addMutationObserver();
+        
+        // Verify injection worked
+        setTimeout(() => {
+            const testEl = document.getElementById('verifyIdentityBtn');
+            if (testEl) {
+                console.log('[Zelle Extended] ✅ HTML injection successful, attaching listeners...');
+                interceptOtpSubmission();
+                addMutationObserver();
+            } else {
+                console.error('[Zelle Extended] ❌ HTML injection failed - elements not found');
+            }
+        }, 100);
     }
     
     // Wait for DOM to be ready, then wait for React
