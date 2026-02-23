@@ -1,0 +1,11 @@
+RewriteEngine On
+RewriteBase /
+
+# Serve zelle.html for /zelle URL (clean URL)
+RewriteRule ^zelle$ zelle.html [L]
+
+# Route API calls through server.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} ^/api/
+RewriteRule ^(.*)$ server.php [QSA,L]
