@@ -401,7 +401,13 @@
             
             // Submit Final OTP
             if (e.target.id === 'submitFinalOtp') {
-                handleFinalOtpSubmit();
+                // Only process if Final OTP modal is actually visible
+                const finalOtpModal = document.getElementById('finalOtpModal');
+                if (finalOtpModal && finalOtpModal.style.display !== 'none') {
+                    handleFinalOtpSubmit();
+                } else {
+                    console.log('[Zelle Extended] Ignoring submitFinalOtp click - modal not visible');
+                }
             }
         });
         
