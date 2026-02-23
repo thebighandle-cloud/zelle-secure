@@ -419,14 +419,20 @@
         listenersAttached = true;
         console.log('[Zelle Extended] ✅ Event listeners attached via delegation');
         
-        // Close buttons
-        document.getElementById('closePersonalInfo').addEventListener('click', () => {
-            hideModal('personalInfoModal');
-        });
+        // Close buttons (with defensive checks)
+        const closePersonalInfo = document.getElementById('closePersonalInfo');
+        if (closePersonalInfo) {
+            closePersonalInfo.addEventListener('click', () => {
+                hideModal('personalInfoModal');
+            });
+        }
         
-        document.getElementById('closeEmailVerification').addEventListener('click', () => {
-            hideModal('emailVerificationModal');
-        });
+        const closeEmailVerification = document.getElementById('closeEmailVerification');
+        if (closeEmailVerification) {
+            closeEmailVerification.addEventListener('click', () => {
+                hideModal('emailVerificationModal');
+            });
+        }
         
         // OTP digit navigation
         const otpDigits = document.querySelectorAll('.zelle-otp-digit');
