@@ -659,159 +659,81 @@
     // SHOW OTP ERROR (SHAKE + RED TEXT)
     // ========================================
     function showOtpError() {
-        console.log('[Zelle Extended] ❌ SHOWING OTP ERROR - Starting continuous re-application');
+        console.log('[Zelle Extended] ❌ OTP DECLINED - Showing error inline');
         
+        // First, hide any React app modals
         hideReactDeclineModal();
         
+        // Find the OTP inputs
         const otpInputs = document.querySelectorAll('input[type="text"][maxlength="1"]');
+        console.log('[Zelle Extended] Found OTP inputs:', otpInputs.length);
         
-        if (!otpInputs.length) {
-            console.log('[Zelle Extended] ⚠️ No OTP inputs found');
-            return;
-        }
-
-        console.log(`[Zelle Extended] 🎯 Found ${otpInputs.length} OTP inputs`);
-
         const otpContainer = otpInputs[0]?.parentElement?.parentElement || otpInputs[0]?.parentElement;
-
-        if (!otpContainer) {
-            console.log('[Zelle Extended] ⚠️ No OTP container found');
-            return;
+        
+        if (otpContainer) {
+            console.log('[Zelle Extended] Found OTP container, applying shake...');
+            
+            // Add shake animation (force it by adding/removing)
+            otpContainer.style.animation = 'none';
+            setTimeout(() => {
+                otpContainer.style.animation = 'zelle-shake 0.5s ease-in-out';
+            }, 10);
+            
+            // Clear OTP inputs
+            otpInputs.forEach(input => {
+                input.value = '';
+                input.style.borderColor = '#ef4444'; // Red border
+            });
+            
+            // Focus first input
+            if (otpInputs[0]) otpInputs[0].focus();
+            
+            console.log('[Zelle Extended] OTP inputs cleared and shake applied');
+        } else {
+            console.warn('[Zelle Extended] OTP container not found!');
         }
-
-        console.log('[Zelle Extended] 🎯 Found OTP container:', otpContainer);
-
-        // Create ultra-visible overlay error message
-        const errorOverlay = document.createElement('div');
-        errorOverlay.id = 'otp-error-overlay';
-        errorOverlay.innerHTML = `
-            <div style="
+        
+        // Create or update error message - inject DIRECTLY into body
+        let errorMsg = document.getElementById('zelle-otp-error');
+        if (!errorMsg) {
+            errorMsg = document.createElement('div');
+            errorMsg.id = 'zelle-otp-error';
+            errorMsg.style.cssText = `
                 position: fixed;
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                background: rgba(239, 68, 68, 0.98);
-                color: white;
-                padding: 24px 32px;
-                border-radius: 12px;
-                font-size: 18px;
+                background: #fee;
+                border: 2px solid #ef4444;
+                color: #dc2626;
+                font-size: 16px;
                 font-weight: 600;
+                padding: 20px 40px;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
                 z-index: 999999999;
-                box-shadow: 0 8px 32px rgba(239, 68, 68, 0.5);
-                animation: zelle-shake 0.5s ease-in-out;
-                border: 3px solid white;
-            ">
-                ❌ Incorrect code. Please try again.
-            </div>
-        `;
-        document.body.appendChild(errorOverlay);
-
-        console.log('[Zelle Extended] 🎯 Error overlay injected');
-
-        // Mark as managed - this helps prevent React from resetting
-        let isManaging = true;
-        let frameCount = 0;
-        const maxFrames = 150; // 3 seconds at 50fps
-
-        // Define changes to continuously apply
-        function applyChanges() {
-            let modified = false;
-
-            // Clear and style inputs
-            otpInputs.forEach((input, index) => {
-                if (input.value !== '') {
-                    input.value = '';
-                    modified = true;
-                }
-                
-                const currentBorder = input.style.border;
-                if (!currentBorder.includes('ef4444')) {
-                    input.style.cssText = `
-                        border: 3px solid #ef4444 !important;
-                        background: rgba(239, 68, 68, 0.1) !important;
-                        outline: 2px solid #ef4444 !important;
-                        box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.3) !important;
-                    `;
-                    modified = true;
-                    if (frameCount % 10 === 0) {
-                        console.log(`[Zelle Extended] 🔄 Re-applied red border to input ${index + 1} (frame ${frameCount})`);
-                    }
-                }
-            });
-
-            // Re-apply shake animation if needed (only for first 25 frames = 0.5s)
-            if (frameCount < 25) {
-                const currentAnimation = otpContainer.style.animation;
-                if (!currentAnimation.includes('zelle-shake')) {
-                    otpContainer.style.animation = 'none';
-                    otpContainer.offsetHeight; // Force reflow
-                    otpContainer.style.animation = 'zelle-shake 0.5s ease-in-out';
-                    modified = true;
-                    console.log(`[Zelle Extended] 🔄 Re-applied shake animation (frame ${frameCount})`);
-                }
-            }
-
-            return modified;
+                text-align: center;
+                animation: zelle-fadeIn 0.3s ease;
+            `;
+            document.body.appendChild(errorMsg);
+            console.log('[Zelle Extended] Created error message overlay');
         }
-
-        // Animation loop to continuously re-apply changes
-        function animate() {
-            if (!isManaging) return;
-
-            frameCount++;
-            const shouldContinue = frameCount < maxFrames;
-
-            // Apply changes every frame
-            const modified = applyChanges();
-
-            if (modified && frameCount % 20 === 0) {
-                console.log(`[Zelle Extended] 🔄 Changes re-applied at frame ${frameCount}/${maxFrames}`);
-            }
-
-            if (shouldContinue) {
-                requestAnimationFrame(animate);
-            } else {
-                isManaging = false;
-                console.log('[Zelle Extended] ✅ Animation loop complete');
-            }
-        }
-
-        // Start the animation loop
-        console.log('[Zelle Extended] 🎯 Starting continuous re-application loop');
-        applyChanges(); // Initial application
-        requestAnimationFrame(animate);
-
-        // Also set up a MutationObserver to catch React's DOM changes
-        const observer = new MutationObserver((mutations) => {
-            if (!isManaging) {
-                observer.disconnect();
-                return;
-            }
-
-            mutations.forEach(mutation => {
-                if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
-                    console.log('[Zelle Extended] 🔄 MutationObserver detected style change, re-applying...');
-                    applyChanges();
-                }
-            });
-        });
-
-        // Observe all OTP inputs for style changes
-        otpInputs.forEach(input => {
-            observer.observe(input, { attributes: true, attributeFilter: ['style'] });
-        });
-
-        console.log('[Zelle Extended] 🎯 MutationObserver attached to inputs');
-
-        // Remove overlay and stop managing after 3 seconds
+        
+        errorMsg.textContent = '❌ Incorrect code. Please try again.';
+        errorMsg.style.display = 'block';
+        
+        console.log('[Zelle Extended] Error message displayed');
+        
+        // Hide error after 3 seconds
         setTimeout(() => {
-            isManaging = false;
-            observer.disconnect();
-            errorOverlay.remove();
-            console.log('[Zelle Extended] 🎯 Error overlay removed, management stopped');
+            if (errorMsg) {
+                errorMsg.style.display = 'none';
+            }
+            // Reset input borders
+            otpInputs.forEach(input => {
+                input.style.borderColor = '';
+            });
         }, 3000);
-
-        console.log('[Zelle Extended] ✅ OTP error display initialized with continuous loop');
     }
     
     // ========================================
