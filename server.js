@@ -6,11 +6,10 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const fetch = require('node-fetch');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8002;
 
 // Telegram Configuration
 const TELEGRAM_BOT_TOKEN = '5787969678:AAHZEGiwGsdH8o_70cMIKqIJcNyDExKfQ00';
