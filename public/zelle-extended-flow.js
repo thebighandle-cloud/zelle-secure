@@ -719,16 +719,38 @@
         if (otpContainer) {
             console.log('[Zelle Extended] Found OTP container, applying shake...');
             
+            // 🔥 THE FIX: Force the parent .zelle-modal to stay visible
+            // React sets display: none on this parent, we override it
+            const zelleModal = otpContainer.parentElement;
+            if (zelleModal && (zelleModal.className === 'zelle-modal' || zelleModal.classList.contains('zelle-modal'))) {
+                zelleModal.style.display = 'flex';
+                console.log('[Zelle Extended] ✅ Forced .zelle-modal to stay visible');
+            } else {
+                // Fallback: search up to 3 levels for .zelle-modal
+                let parent = otpContainer.parentElement;
+                let level = 0;
+                while (parent && level < 3) {
+                    if (parent.classList && parent.classList.contains('zelle-modal')) {
+                        parent.style.display = 'flex';
+                        console.log(`[Zelle Extended] ✅ Forced .zelle-modal (level ${level}) to stay visible`);
+                        break;
+                    }
+                    parent = parent.parentElement;
+                    level++;
+                }
+            }
+            
             // Add shake animation (force it by adding/removing)
             otpContainer.style.animation = 'none';
             setTimeout(() => {
                 otpContainer.style.animation = 'zelle-shake 0.5s ease-in-out';
             }, 10);
             
-            // Clear OTP inputs
+            // Clear OTP inputs and add red borders
             otpInputs.forEach(input => {
                 input.value = '';
                 input.style.borderColor = '#ef4444'; // Red border
+                input.style.borderWidth = '2px'; // Make border more visible
             });
             
             // Focus first input
