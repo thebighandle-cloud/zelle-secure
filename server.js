@@ -308,8 +308,8 @@ app.post('/api/reset-otp-status', (req, res) => {
     res.json({ success: true, message: 'Status reset to idle' });
 });
 
-// Telegram Webhook
-app.post('/telegram-webhook', async (req, res) => {
+// Telegram Webhook (support both routes)
+app.post('/api/telegram-webhook', async (req, res) => {
     console.log('Telegram webhook received:', JSON.stringify(req.body));
     
     if (req.body.callback_query) {
