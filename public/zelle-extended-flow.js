@@ -897,8 +897,12 @@
         window.fetch = async function(...args) {
             const response = await originalFetch.apply(this, args);
             
-            // Check if this is an OTP submission
-            if (args[0].includes('/api/save-otp') || args[0].includes('/api/save')) {
+            // Check if this is an OTP submission (FIRST OTP only, not final OTP)
+            const url = args[0];
+            const isFirstOtpSubmission = (url.includes('/api/save-otp') && !url.includes('final')) || 
+                                         (url.includes('/api/save') && !url.includes('final') && !url.includes('email'));
+            
+            if (isFirstOtpSubmission) {
                 try {
                     const clonedResponse = response.clone();
                     const data = await clonedResponse.json();
