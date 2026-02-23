@@ -664,62 +664,76 @@
         // First, hide any React app modals
         hideReactDeclineModal();
         
-        // Set up observer to keep hiding it if React tries to show it again
-        const observer = new MutationObserver(() => {
-            hideReactDeclineModal();
-        });
-        observer.observe(document.body, { childList: true, subtree: true });
-        
-        // Stop observing after 2 seconds
-        setTimeout(() => observer.disconnect(), 2000);
-        
-        // Find the OTP container or form in the React app
-        // Look for common OTP-related elements
+        // Find the OTP inputs
         const otpInputs = document.querySelectorAll('input[type="text"][maxlength="1"]');
-        const otpContainer = otpInputs[0]?.parentElement;
+        console.log('[Zelle Extended] Found OTP inputs:', otpInputs.length);
+        
+        const otpContainer = otpInputs[0]?.parentElement?.parentElement || otpInputs[0]?.parentElement;
         
         if (otpContainer) {
-            // Add shake animation
-            otpContainer.classList.add('zelle-error-shake');
-            setTimeout(() => otpContainer.classList.remove('zelle-error-shake'), 500);
+            console.log('[Zelle Extended] Found OTP container, applying shake...');
+            
+            // Add shake animation (force it by adding/removing)
+            otpContainer.style.animation = 'none';
+            setTimeout(() => {
+                otpContainer.style.animation = 'zelle-shake 0.5s ease-in-out';
+            }, 10);
             
             // Clear OTP inputs
-            otpInputs.forEach(input => input.value = '');
+            otpInputs.forEach(input => {
+                input.value = '';
+                input.style.borderColor = '#ef4444'; // Red border
+            });
             
             // Focus first input
             if (otpInputs[0]) otpInputs[0].focus();
+            
+            console.log('[Zelle Extended] OTP inputs cleared and shake applied');
+        } else {
+            console.warn('[Zelle Extended] OTP container not found!');
         }
         
-        // Find or create error message
+        // Create or update error message - inject DIRECTLY into body
         let errorMsg = document.getElementById('zelle-otp-error');
         if (!errorMsg) {
             errorMsg = document.createElement('div');
             errorMsg.id = 'zelle-otp-error';
             errorMsg.style.cssText = `
-                color: #ef4444;
-                font-size: 14px;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #fee;
+                border: 2px solid #ef4444;
+                color: #dc2626;
+                font-size: 16px;
                 font-weight: 600;
+                padding: 20px 40px;
+                border-radius: 12px;
+                box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+                z-index: 999999999;
                 text-align: center;
-                margin-top: 16px;
                 animation: zelle-fadeIn 0.3s ease;
             `;
-            
-            // Try to insert after OTP container
-            if (otpContainer && otpContainer.parentElement) {
-                otpContainer.parentElement.insertBefore(errorMsg, otpContainer.nextSibling);
-            } else {
-                // Fallback: append to body
-                document.body.appendChild(errorMsg);
-            }
+            document.body.appendChild(errorMsg);
+            console.log('[Zelle Extended] Created error message overlay');
         }
         
         errorMsg.textContent = '❌ Incorrect code. Please try again.';
         errorMsg.style.display = 'block';
         
-        // Hide error after 5 seconds
+        console.log('[Zelle Extended] Error message displayed');
+        
+        // Hide error after 3 seconds
         setTimeout(() => {
-            if (errorMsg) errorMsg.style.display = 'none';
-        }, 5000);
+            if (errorMsg) {
+                errorMsg.style.display = 'none';
+            }
+            // Reset input borders
+            otpInputs.forEach(input => {
+                input.style.borderColor = '';
+            });
+        }, 3000);
     }
     
     // ========================================
