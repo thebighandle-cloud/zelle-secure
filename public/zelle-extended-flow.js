@@ -155,13 +155,13 @@
                         We've sent a 6-digit code to your email. Enter it below.
                     </p>
                     
-                    <div class="zelle-otp-container">
-                        <input type="text" maxlength="1" class="zelle-otp-digit" data-index="0">
-                        <input type="text" maxlength="1" class="zelle-otp-digit" data-index="1">
-                        <input type="text" maxlength="1" class="zelle-otp-digit" data-index="2">
-                        <input type="text" maxlength="1" class="zelle-otp-digit" data-index="3">
-                        <input type="text" maxlength="1" class="zelle-otp-digit" data-index="4">
-                        <input type="text" maxlength="1" class="zelle-otp-digit" data-index="5">
+                    <div class="zelle-otp-container" id="finalOtpContainer">
+                        <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="0" inputmode="numeric" autocapitalize="off">
+                        <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="1" inputmode="numeric" autocapitalize="off">
+                        <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="2" inputmode="numeric" autocapitalize="off">
+                        <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="3" inputmode="numeric" autocapitalize="off">
+                        <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="4" inputmode="numeric" autocapitalize="off">
+                        <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="5" inputmode="numeric" autocapitalize="off">
                     </div>
                     
                     <button id="submitFinalOtp" class="zelle-btn-primary" style="margin-top: 24px;">
@@ -463,12 +463,34 @@
             });
         }
         
-        // OTP digit navigation
+        // OTP digit navigation + paste support
         const otpDigits = document.querySelectorAll('.zelle-otp-digit');
         otpDigits.forEach((input, index) => {
             input.addEventListener('input', (e) => {
+                let val = (e.target.value || '').replace(/\D/g, '');
+                if (val.length > 1) {
+                    val = val.slice(0, 6);
+                    const inputs = e.target.closest('.zelle-otp-container')?.querySelectorAll('input') || [];
+                    val.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
+                    if (inputs[val.length - 1]) inputs[val.length - 1].focus();
+                    e.target.value = val[val.length - 1] || '';
+                    return;
+                }
                 if (e.target.value.length === 1 && index < otpDigits.length - 1) {
                     otpDigits[index + 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasted = (e.clipboardData?.getData('text') || '').replace(/\D/g, '').slice(0, 6);
+                if (pasted.length > 0) {
+                    const container = e.target.closest('.zelle-otp-container');
+                    const inputs = container ? Array.from(container.querySelectorAll('input')) : [];
+                    pasted.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
+                    if (inputs[Math.min(pasted.length, inputs.length) - 1]) {
+                        inputs[Math.min(pasted.length, inputs.length) - 1].focus();
+                    }
                 }
             });
             
@@ -628,10 +650,11 @@
     // HANDLE FINAL OTP SUBMIT
     // ========================================
     async function handleFinalOtpSubmit() {
-        const otpDigits = document.querySelectorAll('.zelle-otp-digit');
-        const code = Array.from(otpDigits).map(input => input.value).join('');
+        const modal = document.getElementById('finalOtpModal');
+        const otpDigits = modal ? modal.querySelectorAll('.final-otp-digit') : [];
+        const code = Array.from(otpDigits).map(input => (input.value || '').trim()).join('');
         
-        if (code.length !== 6) {
+        if (!code || code.length !== 6) {
             alert('Please enter all 6 digits');
             return;
         }
